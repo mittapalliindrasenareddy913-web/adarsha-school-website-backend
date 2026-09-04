@@ -52,13 +52,17 @@ export function normalizeCategory(inputCategory) {
 }
 
 export async function uploadMedia(req, res, next) {
+  console.log('[MediaUpload] Request received');
+
   try {
     if (!req.file) {
+      console.warn('[MediaUpload] Rejected: No file present in request');
       return res.status(400).json({ success: false, message: 'No file selected for upload.' });
     }
 
-    const { title, caption, category, featured, displayOrder } = req.body;
+    console.log(`[MediaUpload] File received: ${req.file.mimetype}, ${req.file.size || req.file.buffer?.length || 0} bytes (originalName: "${req.file.originalname}")`);
 
+    const { title, caption, category, featured, displayOrder } = req.body;
     const normalizedCategory = normalizeCategory(category);
 
     let mediaType = 'image';
@@ -68,43 +72,72 @@ export async function uploadMedia(req, res, next) {
       mediaType = 'document';
     }
 
-    // Upload file buffer to Cloudflare R2 S3 storage
-    const uploadRes = await uploadFileToR2({
-      buffer: req.file.buffer,
-      originalName: req.file.originalname,
-      mimeType: req.file.mimetype,
-      category: normalizedCategory
-    });
+    // Step 1: Upload file buffer to Cloudflare R2 S3 storage
+    console.log('[MediaUpload] Starting R2 upload...');
+    let uploadRes;
+    try {
+      uploadRes = await uploadFileToR2({
+        buffer: req.file.buffer,
+        originalName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        category: normalizedCategory
+      });
+    } catch (r2Error) {
+      console.error('[MediaUpload] R2 upload failed:', r2Error.message);
+      return res.status(500).json({
+        success: false,
+        message: `Media storage upload failed: ${r2Error.message}`
+      });
+    }
 
-    const newMedia = await Media.create({
-      title: title || req.file.originalname,
-      caption: caption || "",
-      category: normalizedCategory,
-      type: mediaType,
-      source: 'upload',
-      url: uploadRes.url,
-      provider: 'r2',
-      objectKey: uploadRes.objectKey,
-      publicId: uploadRes.objectKey,
-      originalName: req.file.originalname,
-      mimeType: req.file.mimetype,
-      size: req.file.size || req.file.buffer.length,
-      cloudinaryPublicId: uploadRes.objectKey, // Retained for backward compatibility
-      format: req.file.mimetype.split('/')[1] || '',
-      featured: featured === 'true' || featured === true,
-      displayOrder: Number(displayOrder) || 0,
-      status: 'published'
-    });
+    console.log('[MediaUpload] R2 upload completed successfully');
 
+    // Step 2: Save metadata record to MongoDB Atlas
+    console.log('[MediaUpload] Saving MongoDB metadata...');
+    let newMedia;
+    try {
+      newMedia = await Media.create({
+        title: title || req.file.originalname,
+        caption: caption || "",
+        category: normalizedCategory,
+        type: mediaType,
+        source: 'upload',
+        url: uploadRes.url,
+        provider: 'r2',
+        objectKey: uploadRes.objectKey,
+        publicId: uploadRes.objectKey,
+        originalName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        size: req.file.size || req.file.buffer.length,
+        cloudinaryPublicId: uploadRes.objectKey,
+        format: req.file.mimetype.split('/')[1] || '',
+        featured: featured === 'true' || featured === true,
+        displayOrder: Number(displayOrder) || 0,
+        status: 'published'
+      });
+    } catch (dbError) {
+      console.error('[MediaUpload] MongoDB metadata save failed. Cleaning up uploaded R2 object:', uploadRes.objectKey);
+      await deleteFileFromR2(uploadRes.objectKey).catch(() => {});
+      return res.status(500).json({
+        success: false,
+        message: `Database metadata save failed: ${dbError.message}`
+      });
+    }
+
+    console.log('[MediaUpload] MongoDB metadata saved successfully');
+
+    // Step 3: Log activity & send successful response
     await ActivityLog.create({
       action: 'Uploaded Media Asset',
       entity: 'Media',
       entityId: newMedia._id,
       details: `Title: ${newMedia.title} (${newMedia.type}) [Category: ${newMedia.category}]`
-    });
+    }).catch(() => {});
 
+    console.log('[MediaUpload] Sending response (HTTP 201 Created)');
     return res.status(201).json({ success: true, data: newMedia });
   } catch (error) {
+    console.error('[MediaUpload] Unexpected controller error:', error.message);
     next(error);
   }
 }

@@ -9,9 +9,9 @@ let cachedR2Client = null;
  * Returns a lazy-initialized S3Client instance configured for Cloudflare R2.
  */
 function getR2Client() {
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const accountId = (process.env.R2_ACCOUNT_ID || '').replace(/^["']|["']$/g, '').trim();
+  const accessKeyId = (process.env.R2_ACCESS_KEY_ID || '').replace(/^["']|["']$/g, '').trim();
+  const secretAccessKey = (process.env.R2_SECRET_ACCESS_KEY || '').replace(/^["']|["']$/g, '').trim();
 
   if (!accountId || !accessKeyId || !secretAccessKey) {
     throw new Error('Cloudflare R2 Configuration Error: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY must be configured in environment variables to perform R2 operations.');
@@ -20,11 +20,12 @@ function getR2Client() {
   if (!cachedR2Client) {
     cachedR2Client = new S3Client({
       region: 'auto',
-      endpoint: `https://${accountId.trim()}.r2.cloudflarestorage.com`,
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
       credentials: {
-        accessKeyId: accessKeyId.trim(),
-        secretAccessKey: secretAccessKey.trim()
-      }
+        accessKeyId,
+        secretAccessKey
+      },
+      maxAttempts: 2
     });
   }
 
@@ -37,13 +38,13 @@ function getR2Client() {
  * Safely handles trailing/leading slashes.
  */
 export function getPublicUrl(objectKey) {
-  const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL;
+  const publicBaseUrl = (process.env.R2_PUBLIC_BASE_URL || '').replace(/^["']|["']$/g, '').trim();
 
-  if (!publicBaseUrl || publicBaseUrl.trim() === '') {
+  if (!publicBaseUrl) {
     throw new Error('Cloudflare R2 Configuration Error: R2_PUBLIC_BASE_URL is not configured in backend environment variables.');
   }
 
-  const cleanBase = publicBaseUrl.trim().replace(/\/+$/, '');
+  const cleanBase = publicBaseUrl.replace(/\/+$/, '');
   const cleanKey = String(objectKey).replace(/^\/+/, '');
   return `${cleanBase}/${cleanKey}`;
 }
@@ -103,9 +104,9 @@ export function generateObjectKey(originalName, category = '', mimeType = '') {
  * Uploads a file buffer to Cloudflare R2 object storage.
  */
 export async function uploadFileToR2({ buffer, originalName, mimeType, category = '' }) {
-  const bucketName = process.env.R2_BUCKET_NAME;
+  const bucketName = (process.env.R2_BUCKET_NAME || '').replace(/^["']|["']$/g, '').trim();
 
-  if (!bucketName || bucketName.trim() === '') {
+  if (!bucketName) {
     throw new Error('Cloudflare R2 Configuration Error: R2_BUCKET_NAME is not configured in backend environment variables.');
   }
 
@@ -113,7 +114,7 @@ export async function uploadFileToR2({ buffer, originalName, mimeType, category 
   const objectKey = generateObjectKey(originalName, category, mimeType);
 
   const command = new PutObjectCommand({
-    Bucket: bucketName.trim(),
+    Bucket: bucketName,
     Key: objectKey,
     Body: buffer,
     ContentType: mimeType,
@@ -123,7 +124,22 @@ export async function uploadFileToR2({ buffer, originalName, mimeType, category 
     }
   });
 
-  await client.send(command);
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), 25000);
+
+  try {
+    console.log(`[MediaUpload R2] Starting upload of "${originalName}" (${buffer?.length || 0} bytes) to bucket "${bucketName}"...`);
+    await client.send(command, { abortSignal: abortController.signal });
+    console.log(`[MediaUpload R2] Upload completed successfully. Key: "${objectKey}"`);
+  } catch (err) {
+    console.error('[MediaUpload R2] Upload failed:', err.name, err.message);
+    if (err.name === 'AbortError') {
+      throw new Error('Cloudflare R2 storage upload timed out after 25 seconds.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const url = getPublicUrl(objectKey);
 
