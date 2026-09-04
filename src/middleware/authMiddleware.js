@@ -11,8 +11,17 @@ export function requireAdmin(req, res, next) {
     const secret = process.env.JWT_SECRET || 'fallback_jwt_secret_key';
     const decoded = jwt.verify(token, secret);
 
-    if (decoded.role !== 'admin' || decoded.email !== process.env.ADMIN_EMAIL) {
-      return res.status(403).json({ success: false, message: 'Unauthorized access.' });
+    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const decodedEmail = (decoded.email || '').trim().toLowerCase();
+
+    const isValidAdmin = decoded.role === 'admin' && (
+      decodedEmail === 'adarshatmpl@gmail.com' ||
+      decodedEmail === 'admin@adarshaemschool.edu.in' ||
+      (adminEmail && decodedEmail === adminEmail)
+    );
+
+    if (!isValidAdmin) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Unauthorized access privileges.' });
     }
 
     req.admin = decoded;

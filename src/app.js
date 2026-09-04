@@ -4,8 +4,11 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 
+import { rateLimit } from 'express-rate-limit';
+
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import { requireAdmin } from './middleware/authMiddleware.js';
+import { sanitizeInputs, validateObjectId } from './middleware/securityMiddleware.js';
 
 import authRoutes from './routes/authRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
@@ -36,6 +39,9 @@ dotenv.config();
 
 const app = express();
 
+// Enable Trust Proxy for Render / Netlify load balancers
+app.set('trust proxy', 1);
+
 // Security Headers
 app.use(helmet({
   crossOriginResourcePolicy: false
@@ -60,10 +66,41 @@ app.use(cors({
   credentials: true
 }));
 
+// Rate Limiters
+const globalApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { success: false, message: 'Too many requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, message: 'Too many login attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const publicFormLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  message: { success: false, message: 'Form submission limit reached. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 // Request Body & Cookie Parsers
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(cookieParser());
+
+// NoSQL Injection Input Sanitization
+app.use(sanitizeInputs);
+
+// Apply Global Rate Limiting
+app.use('/api', globalApiLimiter);
 
 // Base Health Check
 app.get('/api/health', (req, res) => {
@@ -71,10 +108,11 @@ app.get('/api/health', (req, res) => {
 });
 
 // Mount Public & Auth Routes
+app.use('/api/auth/login', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/public', publicRoutes);
-app.use('/api/admissions', admissionRoutes);
-app.use('/api/contact', contactRoutes);
+app.use('/api/admissions', publicFormLimiter, admissionRoutes);
+app.use('/api/contact', publicFormLimiter, contactRoutes);
 
 // Mount Protected Admin CRUD Routes
 app.use('/api/admin/announcements', announcementRoutes);
