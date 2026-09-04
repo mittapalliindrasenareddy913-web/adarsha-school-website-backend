@@ -59,6 +59,43 @@ const siteSettingsSchema = new mongoose.Schema({
     ogImage: { type: String, default: "" }
   },
 
+  home: {
+    heroTagline: { type: String, default: "Where Curiosity Becomes Confidence." },
+    heroSubTagline: { type: String, default: "An environment where young minds learn, explore, create, and prepare for tomorrow." },
+    heroMediaType: {
+      type: String,
+      enum: ['IMAGE', 'R2_VIDEO', 'CLOUDINARY_VIDEO', 'YOUTUBE'],
+      default: 'IMAGE'
+    },
+    heroImage: { type: String, default: "https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1920&q=80" },
+    heroVideoUrl: { type: String, default: "" },
+    heroYouTubeUrl: { type: String, default: "" },
+    aboutSectionHeading: { type: String, default: "Welcome to Adarsha High School" },
+    aboutText: { type: String, default: "" }
+  },
+
+  about: {
+    heroSubtitle: { type: String, default: "Adarsha High School provides a structured, supportive learning environment dedicated to developing curious, responsible, and ethical students." },
+    introduction: { type: String, default: "" },
+    history: { type: String, default: "" },
+    vision: { type: String, default: "To be a leading educational institution in the region recognized for fostering academic excellence, moral integrity, and modern technological readiness in young learners." },
+    mission: { type: String, default: "To empower every student through conceptual learning, disciplined habits, sports participation, and moral values in a supportive, safe educational atmosphere." },
+    philosophy: { type: String, default: "" },
+    approach: { type: String, default: "" },
+    studentDevelopment: { type: String, default: "" },
+    additionalInfo: { type: String, default: "" },
+    aboutImage: { type: String, default: "" },
+    journey: [{
+      year: { type: String, default: "" },
+      title: { type: String, default: "" },
+      description: { type: String, default: "" }
+    }],
+    values: [{
+      name: { type: String, default: "" },
+      desc: { type: String, default: "" }
+    }]
+  },
+
   developerCredit: {
     text: { type: String, default: "Designed & Developed by" },
     brandName: { type: String, default: "ISR WEBDESIGN" },
