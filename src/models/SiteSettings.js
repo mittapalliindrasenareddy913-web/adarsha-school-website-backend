@@ -18,6 +18,25 @@ const siteSettingsSchema = new mongoose.Schema({
   logo: { type: String, default: "" },
   admissionAcademicYear: { type: String, default: "2026–27" },
 
+  leadership: {
+    correspondent: {
+      name: { type: String, default: "" },
+      designation: { type: String, default: "Correspondent" },
+      photo: { type: String, default: "" },
+      message: { type: String, default: "" },
+      quote: { type: String, default: "" },
+      enabled: { type: Boolean, default: true }
+    },
+    principal: {
+      name: { type: String, default: "" },
+      designation: { type: String, default: "Principal" },
+      photo: { type: String, default: "" },
+      message: { type: String, default: "" },
+      quote: { type: String, default: "" },
+      enabled: { type: Boolean, default: true }
+    }
+  },
+
   location: {
     address: { type: String, default: "Cross Road, Thamballapalle, Andhra Pradesh, India" },
     landmark: { type: String, default: "Cross Road, Thamballapalle" },
