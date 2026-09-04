@@ -42,9 +42,21 @@ app.use(helmet({
 }));
 
 // CORS Configuration
-const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
 app.use(cors({
-  origin: allowedOrigin,
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    const frontendUrl = process.env.FRONTEND_URL || '';
+    if (
+      origin === frontendUrl ||
+      origin.endsWith('.netlify.app') ||
+      origin.endsWith('.onrender.com') ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1')
+    ) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
   credentials: true
 }));
 
