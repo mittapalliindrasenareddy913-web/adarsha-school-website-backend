@@ -27,7 +27,7 @@ const siteSettingsSchema = new mongoose.Schema({
 
   contact: {
     phonePrimary: { type: String, default: "+91 98765 43210" },
-    phoneSecondary: { type: String, default: "+91 87654 32109" },
+    phoneSecondary: { type: String, default: "" },
     whatsappNumber: { type: String, default: "919876543210" },
     email: { type: String, default: "info@adarshaemschool.edu.in" },
     admissionsEmail: { type: String, default: "admissions@adarshaemschool.edu.in" },
