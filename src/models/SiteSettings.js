@@ -19,8 +19,8 @@ const siteSettingsSchema = new mongoose.Schema({
   admissionAcademicYear: { type: String, default: "2026–27" },
 
   location: {
-    address: { type: String, default: "Kadiri Region, Anantapur District, Andhra Pradesh 515591, India" },
-    landmark: { type: String, default: "Near Main Road, Kadiri" },
+    address: { type: String, default: "Cross Road, Thamballapalle, Andhra Pradesh, India" },
+    landmark: { type: String, default: "Cross Road, Thamballapalle" },
     googleMapsUrl: { type: String, default: "https://maps.app.goo.gl/SkHq86FABbvmB51J6" },
     embedMapUrl: { type: String, default: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15444.6!2d78.4483544!3d13.8244027!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bb2455cd9c3208f%3A0xed5d454df6a552a5!2sAdarsha%20E.M%20school!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin" }
   },
@@ -35,8 +35,8 @@ const siteSettingsSchema = new mongoose.Schema({
   },
 
   seo: {
-    siteTitle: { type: String, default: "Adarsha E.M. School | Where Curiosity Becomes Confidence" },
-    metaDescription: { type: String, default: "Official portal of Adarsha English Medium School, Kadiri. Empowering young minds with academic rigor and moral values." },
+    siteTitle: { type: String, default: "Adarsha High School | Where Curiosity Becomes Confidence" },
+    metaDescription: { type: String, default: "Official portal of Adarsha High School, Thamballapalle. Empowering young minds with academic rigor and moral values." },
     ogImage: { type: String, default: "" }
   },
 
