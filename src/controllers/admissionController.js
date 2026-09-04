@@ -3,6 +3,32 @@ import ContactEnquiry from '../models/ContactEnquiry.js';
 import ActivityLog from '../models/ActivityLog.js';
 import SiteSettings from '../models/SiteSettings.js';
 
+export const CANONICAL_TARGET_CLASSES = ['Pre-Primary', 'Primary', 'High School'];
+
+/**
+ * Normalizes input grade labels to canonical database values:
+ * - Pre-Primary
+ * - Primary
+ * - High School
+ */
+export function normalizeTargetClass(inputClass) {
+  if (!inputClass || typeof inputClass !== 'string') return '';
+  const clean = inputClass.trim();
+  const lower = clean.toLowerCase();
+
+  if (lower.includes('pre-primary') || lower.includes('nursery') || lower.includes('lkg') || lower.includes('ukg')) {
+    return 'Pre-Primary';
+  }
+  if (lower.includes('high school') || lower.includes('secondary') || lower.includes('middle') || lower.includes('grade 6') || lower.includes('grade vi') || lower.includes('grade 9') || lower.includes('grade ix') || lower.includes('grade 10') || lower.includes('grade x')) {
+    return 'High School';
+  }
+  if (lower.includes('primary') || lower.includes('grade 1') || lower.includes('grade i') || lower.includes('grade 5') || lower.includes('grade v')) {
+    return 'Primary';
+  }
+
+  return clean;
+}
+
 // Public endpoint: Submit admission enquiry
 export async function submitAdmissionEnquiry(req, res, next) {
   try {
@@ -10,6 +36,15 @@ export async function submitAdmissionEnquiry(req, res, next) {
 
     if (!parentName || !studentName || !phone || !targetClass) {
       return res.status(400).json({ success: false, message: 'Please complete all required fields.' });
+    }
+
+    const canonicalTargetClass = normalizeTargetClass(targetClass);
+
+    if (!CANONICAL_TARGET_CLASSES.includes(canonicalTargetClass)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid target class category. Please select Pre-Primary, Primary, or High School.'
+      });
     }
 
     const referenceId = 'ENQ-' + Math.floor(100000 + Math.random() * 900000);
@@ -22,7 +57,7 @@ export async function submitAdmissionEnquiry(req, res, next) {
       studentName,
       phone,
       email,
-      targetClass,
+      targetClass: canonicalTargetClass,
       message,
       referenceId,
       academicYear,
@@ -43,7 +78,7 @@ export async function submitAdmissionEnquiry(req, res, next) {
 // Protected Admin endpoints
 export async function getAdmissionEnquiries(req, res, next) {
   try {
-    const { status, academicYear, readState, search } = req.query;
+    const { status, academicYear, readState, targetClass, search } = req.query;
     let query = {};
 
     if (status && status !== 'All') {
@@ -54,6 +89,13 @@ export async function getAdmissionEnquiries(req, res, next) {
       query.academicYear = academicYear;
     }
 
+    if (targetClass && targetClass !== 'All') {
+      query.$or = [
+        { targetClass: targetClass },
+        { targetClass: { $regex: targetClass, $options: 'i' } }
+      ];
+    }
+
     if (readState === 'unread') {
       query.isRead = false;
     } else if (readState === 'read') {
@@ -61,12 +103,19 @@ export async function getAdmissionEnquiries(req, res, next) {
     }
 
     if (search) {
-      query.$or = [
+      const searchConditions = [
         { parentName: { $regex: search, $options: 'i' } },
         { studentName: { $regex: search, $options: 'i' } },
         { phone: { $regex: search, $options: 'i' } },
-        { referenceId: { $regex: search, $options: 'i' } }
+        { referenceId: { $regex: search, $options: 'i' } },
+        { targetClass: { $regex: search, $options: 'i' } }
       ];
+
+      if (query.$or) {
+        query = { $and: [query, { $or: searchConditions }] };
+      } else {
+        query.$or = searchConditions;
+      }
     }
 
     const enquiries = await AdmissionEnquiry.find(query).sort({ createdAt: -1 });
