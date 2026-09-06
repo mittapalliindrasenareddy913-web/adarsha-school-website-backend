@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 
 const siteSettingsSchema = new mongoose.Schema({
-  schoolName: { type: String, default: "Adarsha E.M. School" },
-  schoolFullName: { type: String, default: "Adarsha English Medium School" },
+  schoolName: { type: String, default: "Adarsha High School" },
+  schoolFullName: { type: String, default: "Adarsha High School" },
   tagline: { type: String, default: "Where Curiosity Becomes Confidence." },
   subTagline: { type: String, default: "An environment where young minds learn, explore, create, and prepare for tomorrow." },
   

@@ -37,7 +37,7 @@ export async function seedInitialData() {
           priority: "High",
           dateFormatted: "August 15, 2026",
           shortDescription: "Application forms for foundational, primary, middle, and secondary grades are now available at the school office.",
-          fullDescription: "Adarsha E.M. School announces the commencement of admissions for the upcoming academic year 2026–2027. Parents seeking quality English medium education with a balanced emphasis on academics, moral values, and co-curricular development are invited to visit the school campus or submit an online enquiry.",
+          fullDescription: "Adarsha High School announces the commencement of admissions for the upcoming academic year 2026–2027. Parents seeking quality English medium education with a balanced emphasis on academics, moral values, and co-curricular development are invited to visit the school campus or submit an online enquiry.",
           status: "published",
           showPopup: true
         },
